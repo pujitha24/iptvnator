@@ -10,7 +10,7 @@ import {
     externalPlayerSessions,
     traceExternalPlayer,
 } from './external-player-runtime';
-import { sendMpvCommand } from './mpv-ipc-command';
+import { MpvCommandArg, sendMpvCommand } from './mpv-ipc-command';
 
 /**
  * The per-file start of a reuse load: the requested offset, else zero. A
@@ -355,15 +355,19 @@ export class MpvReusableProcess {
         // The reused process was launched with a global `--start=<resume>`,
         // which mpv applies to every later file too. A per-file `start`
         // (0 when nothing is resumed) keeps each load at its own offset.
-        const fileOptions = [`start=${reuseStartSeconds(options.startTime)}`];
+        // Sent as a JSON object, not a `key=value,...` string, so a comma or
+        // leading `[` in the title cannot break mpv's option parsing.
+        const fileOptions: Record<string, string> = {
+            start: String(reuseStartSeconds(options.startTime)),
+        };
         if (options.title) {
-            fileOptions.push(`force-media-title=${options.title}`);
+            fileOptions['force-media-title'] = options.title;
         }
-        const loadFileArgs: Array<string | number> = [
+        const loadFileArgs: MpvCommandArg[] = [
             options.url,
             'replace',
             -1,
-            fileOptions.join(','),
+            fileOptions,
         ];
         const reply = await sendMpvCommand(
             socketPath,

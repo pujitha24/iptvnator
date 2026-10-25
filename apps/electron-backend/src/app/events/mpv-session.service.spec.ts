@@ -391,10 +391,13 @@ describe('external player shutdown on app quit', () => {
 
         const written: string[] = [];
         mockMpvSockets({ written });
-        const loadfileOptionsOf = async (startTime: number | undefined) => {
+        const loadfileOptionsOf = async (
+            startTime: number | undefined,
+            title = 'Episode 4'
+        ) => {
             written.length = 0;
             await openMpvPlayer({
-                title: 'Episode 4',
+                title,
                 url: 'https://portal.example/ep/4',
                 ...(startTime === undefined ? {} : { startTime }),
             });
@@ -402,24 +405,32 @@ describe('external player shutdown on app quit', () => {
                 .map(
                     (chunk) =>
                         JSON.parse(chunk.trim()).command as Array<
-                            string | number
+                            string | number | Record<string, string>
                         >
                 )
                 .find((command) => command[0] === 'loadfile');
             expect(loadfile).toBeDefined();
             // ['loadfile', url, 'replace', index, options]
-            return String(loadfile?.[4]);
+            return loadfile?.[4];
         };
 
-        expect(await loadfileOptionsOf(0)).toBe(
-            'start=0,force-media-title=Episode 4'
-        );
-        expect(await loadfileOptionsOf(undefined)).toBe(
-            'start=0,force-media-title=Episode 4'
-        );
-        expect(await loadfileOptionsOf(90)).toBe(
-            'start=90,force-media-title=Episode 4'
-        );
+        expect(await loadfileOptionsOf(0)).toEqual({
+            start: '0',
+            'force-media-title': 'Episode 4',
+        });
+        expect(await loadfileOptionsOf(undefined)).toEqual({
+            start: '0',
+            'force-media-title': 'Episode 4',
+        });
+        // A comma or leading bracket in the title must stay inside its value.
+        expect(await loadfileOptionsOf(0, '[HD] UK: BBC One, HD')).toEqual({
+            start: '0',
+            'force-media-title': '[HD] UK: BBC One, HD',
+        });
+        expect(await loadfileOptionsOf(90)).toEqual({
+            start: '90',
+            'force-media-title': 'Episode 4',
+        });
 
         shutdownMpvSession();
     });

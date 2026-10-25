@@ -39,6 +39,9 @@ export class MpvIpcCommandError extends Error {
     }
 }
 
+/** One JSON argument of an mpv IPC command; per-file options are an object. */
+export type MpvCommandArg = string | number | Record<string, string>;
+
 let nextRequestId = 1;
 
 function parseReplyLine(line: string): Partial<MpvIpcReply> | null {
@@ -63,7 +66,7 @@ function parseReplyLine(line: string): Partial<MpvIpcReply> | null {
 export function sendMpvCommand(
     socketPath: string,
     command: string,
-    args: Array<string | number>,
+    args: MpvCommandArg[],
     options: MpvIpcCommandOptions = {}
 ): Promise<MpvIpcReply | false> {
     return new Promise((resolve, reject) => {
